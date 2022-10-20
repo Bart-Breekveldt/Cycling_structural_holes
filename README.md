@@ -11,3 +11,5 @@ Cycling networks (network_type = ‘bike’) are then extracted for all the muni
 Extracting amenities and shops (2)
 
 This script is also written in Python due to its connection to the package OSMnx. This package is also used for extracting amenities and shops according to the time geography described in “Extracting the cycling network”. The Paris urban area is extracted at the same way as in this script. 
+
+Later more...
