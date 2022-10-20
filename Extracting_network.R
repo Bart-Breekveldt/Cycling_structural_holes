@@ -6,9 +6,12 @@ library(splus2R)
 e = read.dbf("D:\\EconNet\\Paris\\Cycling_routes\\BikeRoutes.dbf")
 n = read.dbf("D:\\EconNet\\Paris\\Cycling_routes\\BikePoints.dbf")
 
+n['osmid_var']
+
 # Take only the relavant columns for the edges (e) and the nodes (n)
 ce = e[,c(1,2,4:10,21)]
 cn = n[,c(1:5,7:9)]
+cn = cn[order(cn$osmid_var), ]
 
 # Remove the bribleways and busways which are usually not bikable 
 ce = ce[1==1 & ce$highway != c('busway','busstop','bribleway'),]
@@ -62,6 +65,9 @@ ce$perc_length = ce$length * (1+ce$Fow) * (1+ce$Flane)* (1+ce$Fsp)* (1+ce$Ftype)
 clean_bike = ce[ce$highway == 'cycleway',]
 clean_road = ce[ce$highway != 'cycleway',]
 
+n['osmid_var']
+
+# write files to csv
 write.csv(ce, 'D:/EconNet/Paris/R_cleaned/edges_clean.csv')
 write.csv(cn, 'D:/EconNet/Paris/R_cleaned/nodes_clean.csv')
 write.csv(clean_bike, 'D:/EconNet/Paris/R_cleaned/bike_clean.csv')
