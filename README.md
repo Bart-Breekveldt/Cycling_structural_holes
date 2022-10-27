@@ -13,7 +13,7 @@ Amenities are also extracted from OpenStreetMap, except for the bikestations and
 ## Data cleaning and adding perceived street length (2, R)
 Columns that are non-relevant are removed, and for mentioned reasons also busways and bribleways. Cycleways set to 10 km/h. An assumption is that less important streets are missing more often in the data, therefore NA values are filled with 30 km/h (max speed), 1 (lanes) and 0 (one-way). From visual inspection, streets are classified into five types; pedestrian, cycleways, residential, secondary and primary, with their own penalties. Highways are already removed as being non-bikeable. Penalties for max speed are slightly exponential, due to the mentioned danger in speed difference between cyclists and motor traffic. At last both the street length and these penalties form the perceived street length for cyclists, assuming cyclists want to slightly divert to better suitable streets.
 
-## Determining kernel betweenness edges (3, R)
+## Determining igraph-kernels and counting edge betweenness
 
 
 
