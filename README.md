@@ -1,6 +1,6 @@
 # Cycling_structural_holes
 
-The script is written for the course Economies of Networks (Utrecht University) by Bart Breekveldt and Veit Schneider. The project is in cooperation with Haby Daffe, Laura Smet and Emma Hoogenboom.
+This script is written for the course Economies of Networks and part of the group work by Bart Breekveldt, Veit Schneider, Laura Smet, Haby Daffe and Emma Hoogenboom
 
 The main goal of these scripts is to find structural holes in the cycling network of Paris. This is done by finding shortest paths between popular amenities, shops and transit facilities. The percieved length increases with penalties from the amount of lanes, max speed, one-way streets and street type, this prefers paths over more suitable streets. The occurrences of edges on shortest paths (betweenness) are counted and multiplied with an importance factor, dependent on the penalties, for improving the street for cyclists. Performance is enhanced by using moving kernels, only using edges that fall partly or completely within a threshold Euclidean distance.
 
