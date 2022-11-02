@@ -1,0 +1,281 @@
+---
+title: "Structural Holes Results and Maps.Rmd"
+author: "Bart Breekveldt"
+date: "2022-11-01"
+output: html_document
+---
+
+# Finding structural holes and create maps
+
+## Loading libraries
+
+```{r setup, include=FALSE}
+packages = c('htmlwidgets','basemaps','dplyr','leaflet','sf','zoo','tidyr','knitr')
+
+usePackage <- function(p) {
+    if (!is.element(p, installed.packages()[,1]))
+        install.packages(p, dep = TRUE)
+    require(p, character.only = TRUE)
+}
+
+library(htmlwidgets)
+library(basemaps)
+library(dplyr)
+library(leaflet)
+library(sf)
+library(zoo)
+library(tidyr)
+library(knitr)
+```
+
+## Load amenity/shop/transit facility type to all others betweenness edges information, bind df, summarise and store.
+
+```{r counts}
+# Load the files of betweenness count
+path = "D:/EconNet/Paris/Betweenness Count/individual/"
+files = list.files(path=path, pattern=NULL, all.files=FALSE,
+           full.names=FALSE)
+
+# bind all the dataframes together
+df = data.frame()
+for (i in files) {
+  df = rbind(df, read.csv(paste0(path,'/',i)))
+}
+
+# summarise by osmids
+cnt_osm = df %>%
+  group_by(osmid_from, osmid_to) %>%
+  summarise(n = sum(n))
+cnt_osm = cnt_osm[order(cnt_osm$n, decreasing = TRUE), ]
+
+# write the total file to csv
+write.csv(cnt_osm,"D:/EconNet/Paris/Betweenness Count/total_kernel_edges.csv")
+
+head(cnt_osm)
+```
+
+## Create one- and bi-directional keys, for bi-directional summarise both way betweenness edge count as one by the new key.
+```{r keys}
+# Determine min and max osm per edge, for determining betweenness count from both directions
+from = unlist(as.list(cnt_osm[,'osmid_from']))
+to = unlist(as.list(cnt_osm[,'osmid_to']))
+min = c()
+max = c()
+onedir = c()
+bidir = c()
+for (i in 1:nrow(cnt_osm)) {
+  min = append(min, min(from[i], to[i]))
+  max = append(max, max(from[i], to[i]))
+  onedir = append(onedir, paste0(from[i],'-',to[i]))
+  bidir = append(bidir, paste0(min[i],'-',max[i]))
+}
+cnt_osm$min_osm = min
+cnt_osm$max_osm = max
+cnt_osm$key_onedir = onedir
+cnt_osm$key_bidir = bidir
+
+
+# Sum by the key of min-max osmid-edges
+cnt2 = cnt_osm %>%
+  group_by(key_bidir) %>%
+  summarise(n = sum(n))
+cnt2 = cnt2[order(cnt2$n, decreasing = TRUE), ]
+
+
+head(cnt2)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+
+# Load the cleaned edges from before and create both one- and bidirectional keys from the edge direction, get distinct information.
+
+```{r edges}
+# Read the cleaned edge file
+ce = read.csv("D:/EconNet/Paris/R_cleaned/edgesC_clean.csv")
+ce = ce %>% select(-X)
+
+# Add the counts to the edge-table
+for (i in 1:nrow(ce)) {
+  ce[i,'min_osm'] = min(ce[i,'u'], ce[i,'v'])
+  ce[i,'max_osm'] = max(ce[i,'u'], ce[i,'v'])
+  ce[i,'key_bidir'] = paste0(ce[i,'min_osm'],'-',ce[i,'max_osm'])
+  ce[i,'key_onedir'] = paste0(ce[i,'u'],'-',ce[i,'v'])
+}
+# Read the geometry file
+shp_ce_sf = read_sf("D:/EconNet/Paris/Cycling_City/BikeRoutes.shp")
+
+# Add the counts to the edge-table
+for (i in 1:nrow(shp_ce_sf)) {
+  shp_ce_sf[i,'min_osm'] = min(shp_ce_sf$u[i], shp_ce_sf$v[i])
+  shp_ce_sf[i,'max_osm'] = max(shp_ce_sf$u[i], shp_ce_sf$v[i])
+  shp_ce_sf[i,'key_bidir'] = paste0(shp_ce_sf$min_osm[i],'-',
+                                    shp_ce_sf$max_osm[i],'-')
+  shp_ce_sf[i,'key_onedir'] = paste0(shp_ce_sf$u[i],'-',shp_ce_sf$v[i])
+}
+
+# Get distinct values, some node-osmids (from-to key) are double, remove them.
+shp_ce_sf = shp_ce_sf %>% distinct(key_onedir, .keep_all = TRUE)
+
+# Do this also for both the onedirectional and bidirectional. At the bidirectional one-side of the street gets also removed and the street is seen as one entity.
+ce = ce %>% distinct(key_onedir, .keep_all = TRUE)
+ce1 = ce %>% distinct(key_bidir, .keep_all = TRUE)
+
+# Merge geometries with existing information
+ce = merge(shp_ce_sf[c('key_onedir','geometry')], ce, by ='key_onedir')
+ce1 = merge(shp_ce_sf[c('key_bidir','geometry')], ce1, by ='key_bidir')
+
+# Write to shapefiles
+st_write(ce, 'D:/EconNet/Paris/Check names road/ce.shp')
+st_write(ce1, 'D:/EconNet/Paris/Check names road/ce1.shp')
+
+head(ce)
+```
+
+## Merge on one- or bidirectional keys edge information, geometries and edge counts. Create an importance factor based on street penalties and form with edge betweenness the structural holes factor.
+
+### First the bi-directional which we see as main, then the one-directional, which we seem as minor
+
+```{r merging, echo=FALSE}
+# Merge counts per bi-directional edge
+ce1_merge = merge(ce1, cnt_osm, by = 'key_bidir')
+ce1_merge = ce1_merge[,c('u','v','min_osm.x','max_osm.x','n','osmid','name','hwys','Ftype','clsp','Fsp','oneway','Fow','length','perc_length','lanes','Flane','geometry')]
+
+# Determine importance factor by its penalties (importancy of road upgrade to design with less penalties)
+ce1_merge['importance_factor'] = ((1+ce1_merge$Ftype) * (1+ce1_merge$Fsp) * (1+ce1_merge$Fow) * (1+ce1_merge$Flane))-1
+
+# Betweenness counts (amount of road pieces on all routes between amenities/shops/transit facilities used)
+ce1_merge['improve_importance_factor'] = (ce1_merge['importance_factor'])*ce1_merge$n
+ce1_merge$n[is.na(ce1_merge$n)] <- 0
+
+# Order to highlight largest values on top.
+ce1_merge = ce1_merge[order(ce1_merge$n, decreasing = TRUE), ]
+write.csv(ce1_merge, 'D:/EconNet/Paris/Betweenness Count/kernel_edges_bidrectional.csv')
+
+# Merge per one-directional edge (and same formatting as the bi-directional ones)
+ce2_merge = merge(ce, cnt_osm, by = 'key_onedir')
+ce2_merge = ce2_merge[,c('u','v','min_osm.x','max_osm.x','n','osmid','name','hwys','Ftype','clsp','Fsp','oneway','Fow','length','perc_length','lanes','Flane','geometry')]
+ce2_merge['importance_factor'] = ((1+ce2_merge$Ftype) * (1+ce2_merge$Fsp) * (1+ce2_merge$Fow) * (1+ce2_merge$Flane))-1
+ce2_merge['improve_importance_factor'] = (ce2_merge['importance_factor'])*ce2_merge$n
+ce2_merge$n[is.na(ce2_merge$n)] <- 0
+ce2_merge = ce2_merge[order(ce2_merge$n, decreasing = TRUE), ]
+write.csv(ce2_merge, 'D:/EconNet/Paris/Betweenness Count/kernel_edges_onedirectional.csv')
+```
+## Lets pre-process the cycleways for the graph and show a base map
+``` {r bikegraph, echo = FALSE}
+# Do the same thing with the bike lanes
+st_bind_bike = st_bind[st_bind$hwys == 'cycleway',]
+
+#st_bind_bike = st_bind[rownames(ce1[ce1$highway == 'cycleway',]),]
+st_bind_bike = st_bind_bike[order(st_bind_bike$n),]
+
+# The bike routes are set as green
+palb <- colorFactor(palette = "Green",
+                    domain = NULL)
+
+# Extract the basemap of Paris in R.
+base = basemap_magick(shp_ce_sf, map_service = "osm", map_type = "streets", p4s = 4326)
+
+print(base)
+```
+## Focus on maps with bi-directional count, because cities often re-design the whole street, thus both ways of the cycle-network on that street. Results will be shown in graphs. First the edge betweenness count graph.
+
+### The maps are interactive. You can zoom and click on streets for more information. The files are saved to an HTML widget with the saveWidget function.
+
+``` {r GraphI, include = TRUE}
+# Order to light on the focus area
+st_bind = ce1_merge[order(ce1_merge$n),]
+
+# Set a color palette. For the edge count this is a heatmap-like
+pal <- colorNumeric(
+  palette = c('#fff782','Orange','Red'),
+  domain = st_bind$n)
+
+# The bike routes are set as green
+palb <- colorFactor(palette = "Green",
+                    domain = NULL)
+
+# Leaflets allow for smooth integration with sf.           
+sf_lines = leaflet() %>%
+  addTiles() %>%
+  addPolylines(data = st_bind, color = ~pal(st_bind$n),
+               # Log is used to balance the weight element
+               weight = log(st_bind$n),
+               # popups give information when a road is selected
+               popup = paste0(st_bind$name,
+                              "<br> <b> Type: </b>",st_bind$hwys,' (',st_bind$clsp,' km/h)',
+                              "<br> <b> Times on route: </b>",st_bind$n,
+                              "<br> <b> Road penalty: </b>",st_bind$importance_factor,
+                              "<br> <b> Struc. hole score: </b>", round(st_bind$improve_importance_factor))) %>%
+  addPolylines(data = st_bind_bike, color = 'green') %>%
+  # Add legends to the graph
+  addLegend(pal = pal, values = st_bind$n, position = "topright", title = 'Times on Route count') %>%
+  addLegend(pal = palb, values = 'dedicated cycleway', position = "topright")
+
+# print the graph
+print(sf_lines)
+
+# Save the graph as an interactive leaflet widget
+saveWidget(sf_lines, file = "D:/EconNet/Paris/Leaflet maps/Betweenness_edges.html")
+
+```
+
+## Also for the second graph, which indicates the penalties resulting from its street design, and where the roads are situated in relation to the dedicated cycleways
+
+``` {r GraphII, include = TRUE}
+# Order to light on the focus area
+st_bind = st_bind[order(st_bind$importance_factor),]
+
+# Do the same for the importance factor
+pal <- colorNumeric(
+  palette = c('#b0d6e3','#ff41c3'),
+  domain = st_bind$importance_factor)
+
+sf_lines = leaflet() %>%
+  addTiles() %>%
+  addPolylines(data = st_bind, 
+               color = ~pal(st_bind$importance_factor),
+               weight = st_bind$importance_factor*20,
+               popup = paste0(st_bind$name,
+                              "<br> <b> Type: </b>",st_bind$hwys,' (',st_bind$clsp,' km/h)',
+                              "<br> <b> Times on route: </b>",st_bind$n,
+                              "<br> <b> Road penalty: </b>",st_bind$importance_factor,
+                              "<br> <b> Struc. hole score: </b>", round(st_bind$improve_importance_factor))) %>%
+  addPolylines(data = st_bind_bike, color = 'green') %>%
+  addLegend(pal = pal, values = st_bind$importance_factor, position = "topright",title = 'Road penalty score') %>%
+  addLegend(pal = palb, values = 'dedicated cycleway', position = "topright")
+
+saveWidget(sf_lines, file = "D:/EconNet/Paris/Leaflet maps/Importance_factor.html")
+
+sf_lines
+```
+
+## The third graph brings the edge betweenness count and the importance factor togheter in a improve importance factor, which roads need to be imroved first as a result of both these metrics. These we consider the structural holes of the network.
+
+``` {r GraphIII, include = TRUE}
+# Order to light on the focus area
+st_bind = st_bind[order(st_bind$improve_importance_factor),]
+
+# As for calculating the betweenness edges or structural holes
+pal <- colorNumeric(
+  palette = "Reds",
+  domain = st_bind$improve_importance_factor)
+
+sf_lines = leaflet() %>%
+  addTiles() %>%
+  addPolylines(data = st_bind, 
+               color = ~pal(st_bind$improve_importance_factor),
+               weight = log(st_bind$improve_importance_factor),
+               popup = paste0(st_bind$name,
+               "<br> <b> Type: </b>",st_bind$hwys,' (',st_bind$clsp,' km/h)',
+               "<br> <b> Times on route: </b>",st_bind$n,
+               "<br> <b> Road penalty: </b>",st_bind$importance_factor,
+               "<br> <b> Struc. hole score: </b>", round(st_bind$improve_importance_factor))) %>%
+  addPolylines(data = st_bind_bike, color = 'green') %>%
+  addLegend(pal = pal, values = st_bind$improve_importance_factor, position = "topright",title = 'Structural hole score') %>%
+  addLegend(pal = palb, values = 'dedicated cycleway', position = "topright")
+
+print(sf_lines)
+
+saveWidget(sf_lines, file = "D:/EconNet/Paris/Leaflet maps/Structural_holes.html")
+
+```
