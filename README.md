@@ -25,6 +25,8 @@ Paths are first loaded with the list.files function. Then all the edge betweenne
 
 The importance factor is equal to the compounded penalties also used in calculated the perceived length. They are intended to have a relative limited effect, for classifying structural holes this is larger. Multiplying this result with the edge-occurences gets the improve importance factor, which we see as structural hole in the network. Other structural holes can be found by plotting the results, like in QGIS. For improvement a primary multi-lane street with higher speeds is multiple times more important to improve than a quiet residential street. Results for edge-occurrences (count col = n), importance factor and the improvement importance for one-directional and bidirectional edges can be found in the attached csv.
 
+A snapshort of the Leaflet map for structural holes in Paris can be found below. The interactive part can be found on RPubs. Due to the interactive character of the maps these are not plotted in GitHub. Use this link https://rpubs.com/Bart_dsguy/Structural_holes_maps
+
 ![afbeelding](https://user-images.githubusercontent.com/83957293/199369001-73aa03cc-3b33-44ff-b834-df775f0f0e1a.png)
 
 ### Limitations
