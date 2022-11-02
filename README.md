@@ -25,6 +25,8 @@ Paths are first loaded with the list.files function. Then all the edge betweenne
 
 The importance factor is equal to the compounded penalties also used in calculated the perceived length. They are intended to have a relative limited effect, for classifying structural holes this is larger. Multiplying this result with the edge-occurences gets the improve importance factor, which we see as structural hole in the network. Other structural holes can be found by plotting the results, like in QGIS. For improvement a primary multi-lane street with higher speeds is multiple times more important to improve than a quiet residential street. Results for edge-occurrences (count col = n), importance factor and the improvement importance for one-directional and bidirectional edges can be found in the attached csv.
 
+![afbeelding](https://user-images.githubusercontent.com/83957293/199369001-73aa03cc-3b33-44ff-b834-df775f0f0e1a.png)
+
 ### Limitations
 Limitations include that not all amenities and shops are taken and that residential and office areas are excluded. There is also no distance decay function implemented in the code, connections with amenities close or far within the kernel are rated the same. Structural holes that exist due to divertion at perceived lengths vs raw lengths are not taken into account.
 
