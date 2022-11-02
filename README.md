@@ -1,8 +1,6 @@
 # Cycling_structural_holes
 
-This script is written for the course Economies of Networks and part of the group work by Bart Breekveldt, Veit Schneider, Laura Smet, Haby Daffe and Emma Hoogenboom. It builds on network theory and bikability theories. Details can be found in the report.
-
-A given presenentation of "Where are the structural holes in the biking-network of Paris to improve the city's bikeability?" can be found on Canva https://www.canva.com/design/DAFQzS1fnu0/ZDMXdh4BY9UbnI9gzHxuAg/edit#
+This script is written for the course Economies of Networks and part of the group work by Bart Breekveldt, Veit Schneider, Laura Smet, Haby Daffe and Emma Hoogenboom. It builds on network theory and bikability theories. 
 
 The main goal of these scripts is to find structural holes in the cycling network of Paris. This is done by finding shortest paths between popular amenities, shops and transit facilities. The percieved length increases with penalties from the amount of lanes, max speed, one-way streets and street type, this prefers paths over more suitable streets. The occurrences of edges on shortest paths (betweenness) are counted and multiplied with an importance factor, dependent on the penalties, for improving the street for cyclists. Performance is enhanced by using moving kernels, only using edges that fall partly or completely within a threshold Euclidean distance.
 
