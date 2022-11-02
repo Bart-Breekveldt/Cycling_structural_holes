@@ -32,9 +32,8 @@ The importance factor is equal to the compounded penalties also used in calculat
 
 Next maps are made with the Leaflet package. Geometries are combined with the transformed edge information. For this values are ordered decreasing, to favor large values in showing of the graph. Color palettes are made upfront (better suited for sf / leaflet). The graphs are colored and weighted by the edge betweenness, important facor or improve important factor (structural holes). A popup is added to generate extra information if the user requests so. The widget is saved in a HTML-format to be reused. A snapshort of the Leaflet map for structural holes in Paris can be found below. The interactive part can be found on RPubs. Due to the interactive character of the maps these are not plotted in GitHub. Use this link https://rpubs.com/Bart_dsguy/Structural_holes_maps
 
-Afbeelding met kaart
+![afbeelding](https://user-images.githubusercontent.com/83957293/199591655-bea36377-f7c6-4c5c-9bca-42aeff0e2d95.png)
 
-Automatisch gegenereerde beschrijving
 ### Limitations
 Limitations include that not all amenities and shops are taken and that residential and office areas are excluded. There is also no distance decay function implemented in the code, connections with amenities close or far within the kernel are rated the same. Structural holes that exist due to divertion at perceived lengths vs raw lengths are not taken into account.
 
